@@ -191,11 +191,14 @@ function createClient(overrides?: Record<string, unknown>): ProcurosClient {
 // ─────────────────────────── Test Suite ───────────────────────────
 
 describe('Full SDK Simulation against Mock API', () => {
-  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+  let client: ProcurosClient;
+
+  beforeAll(() => {
+    server.listen({ onUnhandledRequest: 'error' });
+    client = createClient();
+  });
   afterEach(() => server.resetHandlers());
   afterAll(() => server.close());
-
-  const client = createClient();
 
   // ── Ping ──
   describe('ping', () => {
@@ -462,12 +465,11 @@ describe('Full SDK Simulation against Mock API', () => {
   // ── Staging Environment ──
   describe('staging environment', () => {
     it('targets staging URL', async () => {
-      const stagingServer = setupServer(
+      server.use(
         http.get('https://api.procuros-staging.io/v2/ping', () =>
           new HttpResponse(null, { status: 204 }),
         ),
       );
-      stagingServer.listen({ onUnhandledRequest: 'error' });
 
       const stagingClient = new ProcurosClient({
         apiToken: TOKEN,
@@ -477,7 +479,6 @@ describe('Full SDK Simulation against Mock API', () => {
       });
 
       await expect(stagingClient.ping()).resolves.toBeUndefined();
-      stagingServer.close();
     });
   });
 });
