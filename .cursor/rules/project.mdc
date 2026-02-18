@@ -1,0 +1,17 @@
+---
+description: SDK-wide conventions for the Procuros TypeScript SDK
+alwaysApply: true
+---
+
+# Procuros SDK Project Conventions
+
+- Every hand-written file must stay under 500 lines. Split into logical modules if approaching the limit.
+- Zero runtime dependencies. Use native `fetch` (Node 18+). No axios, node-fetch, etc.
+- ESM-first (`"type": "module"` in package.json). Dual ESM + CJS build via tsup.
+- Use barrel `index.ts` files for public re-exports. Internal modules import directly.
+- PascalCase for types/interfaces/classes. camelCase for functions, variables, parameters.
+- Never log, serialize, or include bearer tokens in error messages or stack traces.
+- Prefer `interface` over `type` for object shapes. Use `type` for unions and aliases.
+- All public API surfaces must have explicit return types.
+- No commented-out code, no `console.log` in production code, no `TODO` without a tracked issue.
+- Keep diffs minimal and focused. One concern per file.

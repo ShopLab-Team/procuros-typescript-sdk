@@ -1,0 +1,61 @@
+{
+  "name": "@shoplab/procuros-sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for the Procuros API v2 — manage B2B trade transactions.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm run type-check && pnpm run build && pnpm run test"
+  },
+  "license": "MIT",
+  "author": "shoplab GmbH <hello@shoplab.cc>",
+  "homepage": "https://shoplab.cc",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ShopLab-Team/procuros-typescript-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ShopLab-Team/procuros-typescript-sdk/issues"
+  },
+  "keywords": [
+    "procuros",
+    "sdk",
+    "api",
+    "b2b",
+    "edi",
+    "transactions"
+  ],
+  "devDependencies": {
+    "msw": "^2.12.10",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

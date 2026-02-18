@@ -1,0 +1,18 @@
+---
+description: TypeScript strict patterns for SDK source code
+globs: src/**/*.ts
+alwaysApply: false
+---
+
+# TypeScript Source Conventions
+
+- TypeScript strict mode is enabled. Never use `// @ts-ignore` or `as any`.
+- Prefer `interface` for object shapes, `type` for unions/intersections/mapped types.
+- Use `readonly` on properties that should not be mutated after construction.
+- All public methods must have explicit return types (no implicit inference across module boundaries).
+- Use discriminated unions (literal `type` field) instead of type assertions or `instanceof` checks where possible.
+- All custom errors extend `ProcurosError`. Use the 5-class hierarchy: ProcurosError, ProcurosApiError, ProcurosValidationError, ProcurosNetworkError, ProcurosTimeoutError.
+- Prefer early returns over deeply nested conditionals.
+- Use `async/await` over raw Promises. Use `AsyncGenerator` for pagination iterators.
+- Import types with `import type { ... }` when the import is only used as a type.
+- No default exports. Use named exports exclusively.

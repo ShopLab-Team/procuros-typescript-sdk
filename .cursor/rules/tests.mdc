@@ -1,0 +1,18 @@
+---
+description: Vitest and MSW test conventions for SDK tests
+globs: tests/**/*.ts
+alwaysApply: false
+---
+
+# Test Conventions
+
+- Use `describe`/`it` blocks. Name tests to describe behavior, not implementation.
+- Use MSW (Mock Service Worker) `http` handlers for HTTP mocking. Never stub or mock `fetch` directly.
+- One assertion concept per `it` block. Multiple `expect` calls are fine if they assert the same concept.
+- Use `createTestClient()` factory from `tests/helpers.ts` to create a pre-configured client for each test.
+- Use `server.use()` for per-test handler overrides. Reset handlers between tests via `afterEach`.
+- Fixture data lives in `tests/fixtures/`. Import fixtures rather than inlining large objects.
+- Test error scenarios: 4xx, 422, 5xx, network failures, timeouts, non-JSON responses.
+- Test pagination edge cases: empty page, single item, multi-page, full `listAll` iteration.
+- Avoid testing internal implementation details. Test the public SDK interface.
+- Keep test files under 500 lines. Split into multiple `describe` blocks if needed.

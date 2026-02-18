@@ -1,0 +1,10 @@
+src/
+tests/
+.cursor/
+openapi-v2.yaml
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+.gitignore
+coverage/
+*.tsbuildinfo
