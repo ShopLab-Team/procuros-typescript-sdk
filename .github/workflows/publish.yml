@@ -115,25 +115,13 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Fetch OIDC token for npm Trusted Publishing
-        # Requests a short-lived OIDC token from GitHub scoped to the npm registry.
-        # npm exchanges this token for a publish credential when the package has a
-        # Trusted Publisher configured — no stored NPM_TOKEN required.
-        id: oidc
-        run: |
-          TOKEN=$(curl -sS \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://registry.npmjs.org/" \
-            | jq -r '.value')
-          echo "::add-mask::$TOKEN"
-          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
-
       - name: Publish
         # --provenance  Attaches a signed SLSA attestation (requires id-token: write).
+        #               The Trusted Publisher config on npmjs.com verifies this
+        #               cryptographically, linking every release to this exact repo.
         # --access public  Required for scoped packages to be publicly installable.
         run: npm publish --provenance --access public
         env:
-          # Short-lived OIDC token from the step above. npm validates it against
-          # the Trusted Publisher configuration on npmjs.com and issues a
-          # temporary publish credential — no static secret stored anywhere.
-          NODE_AUTH_TOKEN: ${{ steps.oidc.outputs.token }}
+          # Granular Access Token scoped to @shoplab, automation 2FA mode.
+          # Rotate every 90 days at: https://www.npmjs.com/settings/shoplab/tokens
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
