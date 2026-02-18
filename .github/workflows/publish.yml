@@ -40,7 +40,7 @@ jobs:
   # ── 1. Verify ────────────────────────────────────────────────────────────────
   verify:
     name: Verify release
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -81,7 +81,7 @@ jobs:
   publish:
     name: Publish to npmjs.com
     needs: verify
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     # Must match the "Environment name" configured in npm Trusted Publishing.
     # Create it at: https://github.com/ShopLab-Team/procuros-typescript-sdk/settings/environments
