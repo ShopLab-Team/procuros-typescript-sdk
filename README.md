@@ -1,5 +1,8 @@
 # @shoplab/procuros-sdk
 
+[![CI](https://github.com/ShopLab-Team/procuros-typescript-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/ShopLab-Team/procuros-typescript-sdk/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/ShopLab-Team/procuros-typescript-sdk/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/ShopLab-Team/procuros-typescript-sdk/actions/workflows/github-code-scanning/codeql)
+
 TypeScript SDK for the [Procuros API v2](https://api.procuros.io) — manage B2B trade transactions with full type safety, auto-pagination, retry logic, and zero runtime dependencies.
 
 > **Full API Documentation:** See [docs/API.md](docs/API.md) for complete reference of every method, type, enum, and error class.
