@@ -14,7 +14,9 @@ name: Publish to npm
 #        https://www.npmjs.com/settings/<username>/tokens
 #        Type:    Granular Access Token
 #        Scope:   Read and Write → Packages and scopes → @shoplab/procuros-sdk
-#        Expiry:  Set to suit your rotation policy (365 days is common)
+#        Expiry:  Maximum 90 days (npm policy for read-write granular tokens).
+#                 Set a calendar reminder to rotate it before expiry, then
+#                 update the NPM_TOKEN secret in GitHub with the new value.
 #   2. Add it as a GitHub secret:
 #        Repo → Settings → Secrets and variables → Actions → New secret
 #        Name:  NPM_TOKEN
