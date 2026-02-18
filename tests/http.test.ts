@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import {
   ProcurosApiError,
   ProcurosValidationError,
+  ProcurosRateLimitError,
   ProcurosNetworkError,
   ProcurosTimeoutError,
 } from '../src/index.js';
@@ -231,6 +232,109 @@ describe('HttpClient', () => {
 
       const client = createTestClientWithRetry(2);
       await expect(client.ping()).rejects.toThrow(ProcurosApiError);
+    });
+  });
+
+  describe('rate limiting (429)', () => {
+    it('retries on 429 with Retry-After header and succeeds', async () => {
+      let attempts = 0;
+      server.use(
+        http.get(`${BASE_URL}/v2/ping`, () => {
+          attempts++;
+          if (attempts === 1) {
+            return HttpResponse.json(
+              { message: 'Too Many Requests' },
+              { status: 429, headers: { 'Retry-After': '0' } },
+            );
+          }
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+
+      const client = createTestClientWithRetry(2);
+      await client.ping();
+      expect(attempts).toBe(2);
+    });
+
+    it('retries on 429 without Retry-After using backoff', async () => {
+      let attempts = 0;
+      server.use(
+        http.get(`${BASE_URL}/v2/ping`, () => {
+          attempts++;
+          if (attempts === 1) {
+            return HttpResponse.json({ message: 'Too Many Requests' }, { status: 429 });
+          }
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+
+      const client = createTestClientWithRetry(2);
+      await client.ping();
+      expect(attempts).toBe(2);
+    });
+
+    it('throws ProcurosRateLimitError after retries exhausted on 429', async () => {
+      server.use(
+        http.get(`${BASE_URL}/v2/ping`, () =>
+          HttpResponse.json(
+            { message: 'Too Many Requests' },
+            { status: 429, headers: { 'Retry-After': '0' } },
+          ),
+        ),
+      );
+
+      const client = createTestClientWithRetry(1);
+      try {
+        await client.ping();
+        expect.unreachable('Should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(ProcurosRateLimitError);
+        expect(err).toBeInstanceOf(ProcurosApiError);
+        const rle = err as ProcurosRateLimitError;
+        expect(rle.status).toBe(429);
+        expect(rle.retryAfterMs).toBe(0);
+      }
+    });
+
+    it('retries on 429 with Retry-After as HTTP-date', async () => {
+      let attempts = 0;
+      server.use(
+        http.get(`${BASE_URL}/v2/ping`, () => {
+          attempts++;
+          if (attempts === 1) {
+            const futureDate = new Date(Date.now() + 100).toUTCString();
+            return HttpResponse.json(
+              { message: 'Too Many Requests' },
+              { status: 429, headers: { 'Retry-After': futureDate } },
+            );
+          }
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+
+      const client = createTestClientWithRetry(2);
+      await client.ping();
+      expect(attempts).toBe(2);
+    });
+
+    it('retries 429 even on POST (rate-limit retries are always safe)', async () => {
+      let attempts = 0;
+      server.use(
+        http.post(`${BASE_URL}/v2/errors`, () => {
+          attempts++;
+          if (attempts === 1) {
+            return HttpResponse.json(
+              { message: 'Too Many Requests' },
+              { status: 429, headers: { 'Retry-After': '0' } },
+            );
+          }
+          return HttpResponse.json({ message: 'OK.' }, { status: 201 });
+        }),
+      );
+
+      const client = createTestClientWithRetry(2);
+      await client.outgoing.reportError({ errorReason: 'test', errorType: 'DATA' });
+      expect(attempts).toBe(2);
     });
   });
 

@@ -6,6 +6,7 @@ import type {
 } from '../types/responses.js';
 import type { RequestOptions } from '../http.js';
 import { validateUuid } from '../errors.js';
+import { validatePerPage, validateCreatedBetween } from '../validation.js';
 import { BaseResource } from './base.js';
 
 export interface ListAllTransactionsOptions {
@@ -22,6 +23,8 @@ export class AllTransactions extends BaseResource {
     options?: ListAllTransactionsOptions,
     requestOptions?: RequestOptions,
   ): Promise<PaginatedResponse<Transaction>> {
+    if (options?.perPage !== undefined) validatePerPage(options.perPage);
+    if (options?.createdBetween !== undefined) validateCreatedBetween(options.createdBetween);
     return this.http.get<PaginatedResponse<Transaction>>(
       '/v2/all-transactions',
       {

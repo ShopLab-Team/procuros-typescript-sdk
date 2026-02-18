@@ -1,11 +1,13 @@
 import {
   ProcurosApiError,
   ProcurosNetworkError,
+  ProcurosRateLimitError,
   ProcurosTimeoutError,
   ProcurosValidationError,
 } from './errors.js';
 
-const SDK_VERSION = '1.0.0';
+declare const __SDK_VERSION__: string;
+const SDK_VERSION = typeof __SDK_VERSION__ !== 'undefined' ? __SDK_VERSION__ : '0.0.0-dev';
 
 export interface HttpClientOptions {
   baseUrl: string;
@@ -83,11 +85,18 @@ export class HttpClient {
 
     const canRetry = this.isRetryable(method);
     let lastError: unknown;
+    let rateLimitDelay: number | undefined;
 
     for (let attempt = 0; attempt <= this.options.maxRetries; attempt++) {
       if (attempt > 0) {
-        if (!canRetry) break;
-        await this.backoff(attempt);
+        if (rateLimitDelay !== undefined) {
+          await new Promise((resolve) => setTimeout(resolve, rateLimitDelay));
+          rateLimitDelay = undefined;
+        } else if (canRetry) {
+          await this.backoff(attempt);
+        } else {
+          break;
+        }
       }
 
       const controller = new AbortController();
@@ -108,9 +117,23 @@ export class HttpClient {
           return response;
         }
 
+        if (response.status === 429 && attempt < this.options.maxRetries) {
+          const retryAfterMs = this.parseRetryAfter(response.headers.get('Retry-After'));
+          rateLimitDelay = retryAfterMs !== undefined
+            ? Math.min(retryAfterMs, this.options.maxDelay)
+            : this.computeBackoff(attempt + 1);
+          lastError = await this.buildRateLimitError(response, method, path, retryAfterMs);
+          continue;
+        }
+
         if (response.status >= 500 && canRetry && attempt < this.options.maxRetries) {
           lastError = await this.buildApiError(response, method, path);
           continue;
+        }
+
+        if (response.status === 429) {
+          throw await this.buildRateLimitError(response, method, path,
+            this.parseRetryAfter(response.headers.get('Retry-After')));
         }
 
         throw await this.buildApiError(response, method, path);
@@ -141,7 +164,7 @@ export class HttpClient {
       }
     }
 
-    if (lastError instanceof ProcurosApiError) {
+    if (lastError instanceof ProcurosRateLimitError || lastError instanceof ProcurosApiError) {
       throw lastError;
     }
 
@@ -158,10 +181,51 @@ export class HttpClient {
   }
 
   private async backoff(attempt: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, this.computeBackoff(attempt)));
+  }
+
+  private computeBackoff(attempt: number): number {
     const base = this.options.baseDelay * Math.pow(2, attempt - 1);
     const jitter = base * (0.5 + Math.random() * 0.5);
-    const delay = Math.min(jitter, this.options.maxDelay);
-    await new Promise((resolve) => setTimeout(resolve, delay));
+    return Math.min(jitter, this.options.maxDelay);
+  }
+
+  private parseRetryAfter(header: string | null): number | undefined {
+    if (!header) return undefined;
+    const seconds = Number(header);
+    if (!Number.isNaN(seconds) && seconds >= 0) {
+      return seconds * 1000;
+    }
+    const dateMs = Date.parse(header);
+    if (!Number.isNaN(dateMs)) {
+      return Math.max(0, dateMs - Date.now());
+    }
+    return undefined;
+  }
+
+  private async buildRateLimitError(
+    response: Response,
+    method: string,
+    path: string,
+    retryAfterMs?: number,
+  ): Promise<ProcurosRateLimitError> {
+    let body: unknown;
+    const text = await response.text();
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = text;
+    }
+    const message = typeof body === 'object' && body !== null && 'message' in body
+      ? String((body as { message: unknown }).message)
+      : 'Rate limit exceeded';
+    return new ProcurosRateLimitError(message, {
+      status: 429,
+      method,
+      path,
+      body,
+      retryAfterMs,
+    });
   }
 
   private buildUrl(path: string, query?: Record<string, string | undefined>): string {

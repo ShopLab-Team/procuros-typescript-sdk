@@ -127,22 +127,3 @@ export interface SendTransactionAcceptedResponse {
 export type SendTransactionResponse =
   | SendTransactionCreatedResponse
   | SendTransactionAcceptedResponse;
-
-// ---------------------------------------------------------------------------
-// Error Response Types
-// ---------------------------------------------------------------------------
-
-export interface ApiErrorResponse {
-  message: string;
-}
-
-export interface ValidationErrorResponse {
-  message: string;
-  errors: Record<string, string[]>;
-}
-
-export interface TransactionValidationErrorResponse {
-  message: string;
-  errors: Record<string, string[]>;
-  errorUrl: string;
-}

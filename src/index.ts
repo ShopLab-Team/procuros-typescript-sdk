@@ -6,6 +6,7 @@ export {
   ProcurosError,
   ProcurosApiError,
   ProcurosValidationError,
+  ProcurosRateLimitError,
   ProcurosNetworkError,
   ProcurosTimeoutError,
 } from './errors.js';

@@ -65,6 +65,32 @@ export class ProcurosValidationError extends ProcurosApiError {
   }
 }
 
+export class ProcurosRateLimitError extends ProcurosApiError {
+  readonly retryAfterMs?: number;
+
+  constructor(
+    message: string,
+    options: {
+      status: number;
+      method: string;
+      path: string;
+      body: unknown;
+      retryAfterMs?: number;
+    },
+  ) {
+    super(message, options);
+    this.name = 'ProcurosRateLimitError';
+    this.retryAfterMs = options.retryAfterMs;
+  }
+
+  override toJSON(): Record<string, unknown> {
+    return {
+      ...super.toJSON(),
+      ...(this.retryAfterMs !== undefined && { retryAfterMs: this.retryAfterMs }),
+    };
+  }
+}
+
 export class ProcurosNetworkError extends ProcurosError {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);

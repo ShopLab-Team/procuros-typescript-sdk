@@ -123,4 +123,42 @@ describe('AllTransactions', () => {
       await expect(client.transactions.get('invalid')).rejects.toThrow(ProcurosError);
     });
   });
+
+  describe('input validation', () => {
+    it('throws ProcurosError when perPage is 0', async () => {
+      const client = createTestClient();
+      await expect(client.transactions.list({ perPage: 0 })).rejects.toThrow(ProcurosError);
+    });
+
+    it('throws ProcurosError when perPage exceeds 100', async () => {
+      const client = createTestClient();
+      await expect(client.transactions.list({ perPage: 101 })).rejects.toThrow(ProcurosError);
+    });
+
+    it('throws ProcurosError for malformed createdBetween', async () => {
+      const client = createTestClient();
+      await expect(
+        client.transactions.list({ createdBetween: '2024-01-01' }),
+      ).rejects.toThrow(ProcurosError);
+    });
+
+    it('throws ProcurosError for createdBetween with wrong separator', async () => {
+      const client = createTestClient();
+      await expect(
+        client.transactions.list({ createdBetween: '2024-01-01 to 2024-01-31' }),
+      ).rejects.toThrow(ProcurosError);
+    });
+
+    it('accepts valid createdBetween format', async () => {
+      server.use(
+        http.get(`${BASE_URL}/v2/all-transactions`, () =>
+          HttpResponse.json(makePage([], false, null)),
+        ),
+      );
+      const client = createTestClient();
+      await expect(
+        client.transactions.list({ createdBetween: '2024-01-01,2024-01-31' }),
+      ).resolves.toBeDefined();
+    });
+  });
 });

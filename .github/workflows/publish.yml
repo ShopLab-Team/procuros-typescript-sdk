@@ -1,30 +1,28 @@
 name: Publish to npm
 
-# Triggered when a GitHub Release is published (via the Releases UI or gh release create).
-# The release tag must match the version in package.json (e.g. v1.2.3 → 1.2.3).
+# Triggered when a GitHub Release is published (via the Releases UI or
+# `gh release create`). The release tag must match the version in package.json
+# (e.g. tag v1.0.0 → package.json version 1.0.0).
 #
-# ─── npm Trusted Publishing (Provenance) ────────────────────────────────────
-# This workflow uses npm's provenance attestation feature. When --provenance is
-# passed, npm uses the GitHub OIDC token (id-token: write) to generate a signed
-# SLSA provenance statement that is attached to the published package. Anyone can
-# verify it came from this exact repo, commit, and workflow run.
+# ─── Publishing to npmjs.com with Provenance ─────────────────────────────────
+# This workflow publishes @shoplab/procuros-sdk to the public npm registry at
+# https://www.npmjs.com/package/@shoplab/procuros-sdk
+#
+# The --provenance flag attaches a signed SLSA attestation to each release,
+# cryptographically linking the package back to this repo, commit, and workflow.
 #
 # Prerequisites (one-time setup):
-#   1. Create an npm Granular Access Token:
-#        https://www.npmjs.com/settings/<username>/tokens
+#   1. Create a Granular Access Token on npmjs.com:
+#        https://www.npmjs.com/settings/<your-username>/tokens
 #        Type:    Granular Access Token
-#        Scope:   Read and Write → Packages and scopes → @shoplab/procuros-sdk
-#        Expiry:  Maximum 90 days (npm policy for read-write granular tokens).
-#                 Set a calendar reminder to rotate it before expiry, then
-#                 update the NPM_TOKEN secret in GitHub with the new value.
+#        Scope:   Read and Write → Packages and scopes → @shoplab
+#        Expiry:  Maximum 90 days (npm policy). Set a calendar reminder to rotate.
 #   2. Add it as a GitHub secret:
-#        Repo → Settings → Secrets and variables → Actions → New secret
+#        https://github.com/ShopLab-Team/procuros-typescript-sdk/settings/secrets/actions
 #        Name:  NPM_TOKEN
-#        Value: <the token from step 1>
-#   3. (Optional but recommended) Create a GitHub Environment named "npm":
-#        Repo → Settings → Environments → New environment → name: npm
-#        Add required reviewers or branch protection rules as desired.
-#        The `environment: npm` key in the publish job below uses it.
+#        Value: <token from step 1>
+#   3. (Optional) Create a GitHub Environment named "npm" for manual approval:
+#        https://github.com/ShopLab-Team/procuros-typescript-sdk/settings/environments
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -33,8 +31,6 @@ on:
 
 jobs:
   # ── 1. Verify ────────────────────────────────────────────────────────────────
-  # Run tests and validate the release tag matches package.json version before
-  # attempting to publish. Keeps npm clean from accidental/broken releases.
   verify:
     name: Verify release
     runs-on: ubuntu-latest
@@ -76,19 +72,19 @@ jobs:
 
   # ── 2. Publish ───────────────────────────────────────────────────────────────
   publish:
-    name: Publish to npm (with provenance)
+    name: Publish to npmjs.com (with provenance)
     needs: verify
     runs-on: ubuntu-latest
 
-    # Scopes this job to the "npm" GitHub Environment (optional).
-    # Lets you require manual approval before publishing via Environments UI.
+    # Scopes this job to the "npm" GitHub Environment.
+    # Go to Settings → Environments → New environment → name: npm
+    # to optionally add required reviewers before each publish.
     environment: npm
 
     permissions:
-      # Required by npm --provenance: lets the workflow request a short-lived
-      # GitHub OIDC token, which npm uses to sign the provenance attestation.
+      # Required for --provenance: generates a short-lived OIDC token that npm
+      # uses to sign the provenance attestation attached to the package.
       id-token: write
-      # Required to read the repository source code.
       contents: read
 
     steps:
@@ -100,13 +96,11 @@ jobs:
         with:
           version: latest
 
-      - name: Setup Node.js with npm registry
+      - name: Setup Node.js with npmjs.com registry
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: pnpm
-          # Configures .npmrc to point at registry.npmjs.org and injects
-          # NODE_AUTH_TOKEN into the npm config automatically.
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
@@ -116,20 +110,10 @@ jobs:
         run: pnpm build
 
       - name: Publish
-        # --provenance  Attaches a signed SLSA provenance attestation to the
-        #               release. Requires id-token: write above.
-        #               Verifiable at: npm info @shoplab/procuros-sdk dist-tags
-        #               or: https://www.npmjs.com/package/@shoplab/procuros-sdk
-        #
-        # --access public  Required for scoped packages (@shoplab/procuros-sdk) to be
-        #                  publicly installable without authentication.
-        #
-        # NOTE: We use `npm publish` (not `pnpm publish`) because pnpm does not
-        # yet support --provenance end-to-end. The build artifacts in dist/ are
-        # already produced by the build step above.
+        # --provenance  Signs the release with a SLSA attestation.
+        #               Verifiable at npmjs.com/package/@shoplab/procuros-sdk
+        # --access public  Required for scoped packages to be publicly installable.
+        # NOTE: Using npm (not pnpm) because pnpm does not support --provenance.
         run: npm publish --provenance --access public
         env:
-          # The Granular Access Token you created in npm (see setup instructions above).
-          # GitHub Actions injects NODE_AUTH_TOKEN into the .npmrc file that
-          # setup-node configured, authenticating the publish request.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

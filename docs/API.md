@@ -125,7 +125,7 @@ Lists unprocessed incoming transactions with cursor-based pagination.
 |---|---|---|---|---|
 | `type` | `TransactionType` | No | -- | Filter by transaction type (e.g. `'ORDER'`, `'INVOICE'`). |
 | `cursor` | `string` | No | -- | Pagination cursor from a previous response. |
-| `perPage` | `number` | No | `100` | Items per page (1--100). |
+| `perPage` | `number` | No | Server default | Items per page (1--100). When omitted, the Procuros API applies its own default. |
 
 #### Returns: PaginatedResponse\<ReceivedTransaction\>
 
@@ -288,12 +288,19 @@ Resource for **sending transactions** to trade partners and reporting errors.
 client.outgoing.send(
   transaction: SentTransaction,
   requestOptions?: RequestOptions,
-): Promise<void>
+): Promise<SendTransactionResponse>
 ```
 
 Sends a new transaction to a trade partner. The `transaction` is a discriminated union on the `type` field.
 
 **API endpoint:** `POST /v2/transactions`
+
+#### Returns: SendTransactionResponse
+
+The response depends on the trade relationship status:
+
+- **201 Created** returns `{ procurosTransactionId: string }` -- the transaction was accepted and queued for delivery.
+- **202 Accepted** returns `{ message: string }` -- the trade relationship is not yet active; the transaction is held until activation.
 
 #### SentTransaction (discriminated union)
 
@@ -419,7 +426,7 @@ Lists all transactions with optional filters and cursor-based pagination.
 | `status` | `TransactionStatus` | No | -- | Filter by status: `'PENDING'`, `'SUCCESS'`, `'FAILED'`, `'DROPPED'`, `'UNKNOWN'`. |
 | `createdBetween` | `string` | No | -- | Date range filter. Format: `'YYYY-MM-DD,YYYY-MM-DD'`. |
 | `cursor` | `string` | No | -- | Pagination cursor. |
-| `perPage` | `number` | No | `100` | Items per page (1--100). |
+| `perPage` | `number` | No | Server default | Items per page (1--100). When omitted, the Procuros API applies its own default. |
 
 #### Returns: PaginatedResponse\<Transaction\>
 
@@ -504,6 +511,7 @@ import {
   ProcurosError,
   ProcurosApiError,
   ProcurosValidationError,
+  ProcurosRateLimitError,
   ProcurosNetworkError,
   ProcurosTimeoutError,
 } from '@shoplab/procuros-sdk';
@@ -560,6 +568,18 @@ try {
   }
 }
 ```
+
+---
+
+### ProcurosRateLimitError
+
+Extends `ProcurosApiError`. Thrown when the API returns HTTP 429 (Too Many Requests) and all retry attempts have been exhausted. The SDK automatically retries 429 responses (on all HTTP methods) using the `Retry-After` header when present, falling back to exponential backoff.
+
+| Property | Type | Description |
+|---|---|---|
+| `retryAfterMs` | `number \| undefined` | Parsed `Retry-After` value in milliseconds, if the header was present. |
+
+Plus all properties from `ProcurosApiError`.
 
 ---
 

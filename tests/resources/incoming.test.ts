@@ -2,6 +2,8 @@ import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { ProcurosError } from '../../src/index.js';
 import { server, http, HttpResponse, BASE_URL, createTestClient, assertAuthHeader } from '../helpers.js';
 import { sampleOrder } from '../fixtures/order.js';
+import { sampleProductCatalog } from '../fixtures/product-catalog.js';
+import { sampleCreditNote } from '../fixtures/credit-note.js';
 import type { ReceivedTransaction, PaginatedResponse } from '../../src/types/responses.js';
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -70,6 +72,44 @@ describe('IncomingTransactions', () => {
       const page = await client.incoming.list();
       expect(page.items).toHaveLength(0);
       expect(page.hasMore).toBe(false);
+    });
+
+    it('receives PRODUCT_CATALOG content correctly', async () => {
+      const received: ReceivedTransaction = {
+        procurosTransactionId: 'pc-rx-uuid',
+        type: 'PRODUCT_CATALOG',
+        content: sampleProductCatalog,
+      };
+      server.use(
+        http.get(`${BASE_URL}/v2/transactions`, () =>
+          HttpResponse.json(makePage([received], false, null)),
+        ),
+      );
+
+      const client = createTestClient();
+      const page = await client.incoming.list({ type: 'PRODUCT_CATALOG' });
+      expect(page.items).toHaveLength(1);
+      expect(page.items[0]!.type).toBe('PRODUCT_CATALOG');
+      expect(page.items[0]!.content).toEqual(sampleProductCatalog);
+    });
+
+    it('receives CREDIT_NOTE content correctly', async () => {
+      const received: ReceivedTransaction = {
+        procurosTransactionId: 'cn-rx-uuid',
+        type: 'CREDIT_NOTE',
+        content: sampleCreditNote,
+      };
+      server.use(
+        http.get(`${BASE_URL}/v2/transactions`, () =>
+          HttpResponse.json(makePage([received], false, null)),
+        ),
+      );
+
+      const client = createTestClient();
+      const page = await client.incoming.list({ type: 'CREDIT_NOTE' });
+      expect(page.items).toHaveLength(1);
+      expect(page.items[0]!.type).toBe('CREDIT_NOTE');
+      expect(page.items[0]!.content).toEqual(sampleCreditNote);
     });
   });
 
@@ -186,6 +226,28 @@ describe('IncomingTransactions', () => {
         { procurosTransactionId: 'id2', success: false, errorReason: 'Missing GTIN', errorType: 'DATA' },
       ]);
       expect(res.data).toHaveLength(2);
+    });
+
+    it('throws ProcurosError when items array is empty', async () => {
+      const client = createTestClient();
+      await expect(client.incoming.bulkMarkProcessed([])).rejects.toThrow(ProcurosError);
+    });
+  });
+
+  describe('input validation', () => {
+    it('throws ProcurosError when perPage is 0', async () => {
+      const client = createTestClient();
+      await expect(client.incoming.list({ perPage: 0 })).rejects.toThrow(ProcurosError);
+    });
+
+    it('throws ProcurosError when perPage exceeds 100', async () => {
+      const client = createTestClient();
+      await expect(client.incoming.list({ perPage: 101 })).rejects.toThrow(ProcurosError);
+    });
+
+    it('throws ProcurosError when perPage is not an integer', async () => {
+      const client = createTestClient();
+      await expect(client.incoming.list({ perPage: 50.5 })).rejects.toThrow(ProcurosError);
     });
   });
 });

@@ -64,7 +64,7 @@ For the complete reference with every parameter, return type, and interface defi
 // List unprocessed incoming transactions (paginated)
 const page = await client.incoming.list({
   type: 'ORDER',        // optional: filter by TransactionType
-  perPage: 50,          // optional: 1-100, default 100
+  perPage: 50,          // optional: 1-100 (server default when omitted)
   cursor: 'abc...',     // optional: cursor from previous page
 });
 
@@ -151,6 +151,7 @@ import {
   ProcurosError,           // Base class for all SDK errors
   ProcurosApiError,        // 4xx/5xx responses (has .status, .method, .path, .body)
   ProcurosValidationError, // 422 responses (has .fieldErrors map)
+  ProcurosRateLimitError,  // 429 responses (has .retryAfterMs, auto-retried)
   ProcurosNetworkError,    // DNS/connection failures
   ProcurosTimeoutError,    // Request timeout (has .timeoutMs)
 } from '@shoplab/procuros-sdk';
@@ -160,6 +161,8 @@ try {
 } catch (err) {
   if (err instanceof ProcurosValidationError) {
     console.log('Field errors:', err.fieldErrors);
+  } else if (err instanceof ProcurosRateLimitError) {
+    console.log(`Rate limited, retry after ${err.retryAfterMs}ms`);
   } else if (err instanceof ProcurosApiError) {
     console.log(`API error ${err.status}:`, err.message);
   } else if (err instanceof ProcurosTimeoutError) {

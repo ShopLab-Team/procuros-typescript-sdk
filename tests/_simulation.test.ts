@@ -16,6 +16,8 @@ import {
 import { sampleOrder } from './fixtures/order.js';
 import { sampleInvoice } from './fixtures/invoice.js';
 import { sampleShippingNotice } from './fixtures/shipping-notice.js';
+import { sampleProductCatalog } from './fixtures/product-catalog.js';
+import { sampleCreditNote } from './fixtures/credit-note.js';
 
 const BASE = 'https://api.procuros.io';
 const TOKEN = 'sim-token-abc123';
@@ -308,6 +310,18 @@ describe('Full SDK Simulation against Mock API', () => {
     it('sends a SHIPPING_NOTICE', async () => {
       await expect(
         client.outgoing.send({ type: 'SHIPPING_NOTICE', content: sampleShippingNotice }),
+      ).resolves.not.toThrow();
+    });
+
+    it('sends a PRODUCT_CATALOG', async () => {
+      await expect(
+        client.outgoing.send({ type: 'PRODUCT_CATALOG', content: sampleProductCatalog }),
+      ).resolves.not.toThrow();
+    });
+
+    it('sends a CREDIT_NOTE', async () => {
+      await expect(
+        client.outgoing.send({ type: 'CREDIT_NOTE', content: sampleCreditNote }),
       ).resolves.not.toThrow();
     });
 
