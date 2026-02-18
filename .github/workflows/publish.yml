@@ -4,25 +4,32 @@ name: Publish to npm
 # `gh release create`). The release tag must match the version in package.json
 # (e.g. tag v1.0.0 → package.json version 1.0.0).
 #
-# ─── Publishing to npmjs.com with Provenance ─────────────────────────────────
-# This workflow publishes @shoplab/procuros-sdk to the public npm registry at
-# https://www.npmjs.com/package/@shoplab/procuros-sdk
+# ─── npm Trusted Publishing (OIDC) ───────────────────────────────────────────
+# This workflow uses npm Trusted Publishing. No stored tokens required.
+# GitHub Actions generates a short-lived OIDC token that npm exchanges for a
+# scoped publish credential automatically — nothing to rotate or store.
 #
-# The --provenance flag attaches a signed SLSA attestation to each release,
-# cryptographically linking the package back to this repo, commit, and workflow.
+# One-time setup (do this AFTER the package exists on npm — see FIRST PUBLISH):
+#   1. Go to: https://www.npmjs.com/package/@shoplab/procuros-sdk
+#   2. Click "Publishing Access" (right-hand sidebar)
+#   3. Under "Trusted Publishers" → "Add a publisher":
+#        Publisher type:    GitHub Actions
+#        GitHub owner:      ShopLab-Team
+#        Repository name:   procuros-typescript-sdk
+#        Workflow file:     publish.yml
+#        Environment name:  npm   ← must match the `environment:` key below
+#   4. Save. Remove NPM_TOKEN secret from GitHub — it is no longer needed.
 #
-# Prerequisites (one-time setup):
-#   1. Create a Granular Access Token on npmjs.com:
-#        https://www.npmjs.com/settings/<your-username>/tokens
-#        Type:    Granular Access Token
-#        Scope:   Read and Write → Packages and scopes → @shoplab
-#        Expiry:  Maximum 90 days (npm policy). Set a calendar reminder to rotate.
-#   2. Add it as a GitHub secret:
-#        https://github.com/ShopLab-Team/procuros-typescript-sdk/settings/secrets/actions
-#        Name:  NPM_TOKEN
-#        Value: <token from step 1>
-#   3. (Optional) Create a GitHub Environment named "npm" for manual approval:
-#        https://github.com/ShopLab-Team/procuros-typescript-sdk/settings/environments
+# ─── FIRST PUBLISH (bootstrap) ───────────────────────────────────────────────
+# The package must exist on npm before Trusted Publishing can be configured.
+# For the very first release only:
+#   1. Add a temporary NPM_TOKEN secret (Granular token, @shoplab scope, 90d)
+#   2. Set FIRST_PUBLISH=true in the publish step below (uncomment it)
+#   3. Publish → the package now exists on npm
+#   4. Configure Trusted Publishing on npmjs.com (step above)
+#   5. Remove NPM_TOKEN from GitHub secrets
+#   6. Remove / re-comment the FIRST_PUBLISH line
+# All future releases use OIDC automatically.
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -72,18 +79,17 @@ jobs:
 
   # ── 2. Publish ───────────────────────────────────────────────────────────────
   publish:
-    name: Publish to npmjs.com (with provenance)
+    name: Publish to npmjs.com
     needs: verify
     runs-on: ubuntu-latest
 
-    # Scopes this job to the "npm" GitHub Environment.
-    # Go to Settings → Environments → New environment → name: npm
-    # to optionally add required reviewers before each publish.
+    # Must match the "Environment name" configured in npm Trusted Publishing.
+    # Create it at: https://github.com/ShopLab-Team/procuros-typescript-sdk/settings/environments
     environment: npm
 
     permissions:
-      # Required for --provenance: generates a short-lived OIDC token that npm
-      # uses to sign the provenance attestation attached to the package.
+      # OIDC: lets GitHub Actions request a short-lived identity token that npm
+      # exchanges for a publish credential. No stored secret required.
       id-token: write
       contents: read
 
@@ -110,10 +116,16 @@ jobs:
         run: pnpm build
 
       - name: Publish
-        # --provenance  Signs the release with a SLSA attestation.
-        #               Verifiable at npmjs.com/package/@shoplab/procuros-sdk
+        # --provenance  Attaches a signed SLSA attestation (requires id-token: write).
         # --access public  Required for scoped packages to be publicly installable.
-        # NOTE: Using npm (not pnpm) because pnpm does not support --provenance.
         run: npm publish --provenance --access public
         env:
+          # FIRST PUBLISH ONLY: uncomment the next line and add NPM_TOKEN to
+          # GitHub secrets. Once Trusted Publishing is configured on npmjs.com,
+          # remove the secret and comment this line out again.
+          # NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          #
+          # After Trusted Publishing is configured, OIDC handles auth automatically.
+          # NODE_AUTH_TOKEN is not set — npm detects the OIDC environment and
+          # exchanges it for a short-lived credential via npm.pkg.github.com.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
