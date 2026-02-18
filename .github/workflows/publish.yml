@@ -118,14 +118,8 @@ jobs:
       - name: Publish
         # --provenance  Attaches a signed SLSA attestation (requires id-token: write).
         # --access public  Required for scoped packages to be publicly installable.
+        #
+        # No NODE_AUTH_TOKEN needed. npm detects the GitHub Actions OIDC environment
+        # (enabled by id-token: write above) and exchanges it for a short-lived
+        # publish credential automatically via npm Trusted Publishing.
         run: npm publish --provenance --access public
-        env:
-          # FIRST PUBLISH ONLY: uncomment the next line and add NPM_TOKEN to
-          # GitHub secrets. Once Trusted Publishing is configured on npmjs.com,
-          # remove the secret and comment this line out again.
-          # NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          #
-          # After Trusted Publishing is configured, OIDC handles auth automatically.
-          # NODE_AUTH_TOKEN is not set — npm detects the OIDC environment and
-          # exchanges it for a short-lived credential via npm.pkg.github.com.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
