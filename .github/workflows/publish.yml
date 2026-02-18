@@ -88,6 +88,7 @@ jobs:
     environment: npm
 
     permissions:
+      id-token: write
       contents: read
 
     steps:
@@ -113,10 +114,11 @@ jobs:
         run: pnpm build
 
       - name: Publish
+        # --provenance  Attaches a signed SLSA attestation linking this release
+        #               to the exact commit and workflow run (requires public repo
+        #               and id-token: write above).
         # --access public  Required for scoped packages to be publicly installable.
-        # NOTE: --provenance is omitted because the source repository is private.
-        # npm provenance signing requires a public GitHub repository.
-        run: npm publish --access public
+        run: npm publish --provenance --access public
         env:
           # Granular Access Token scoped to @shoplab, automation 2FA mode.
           # Rotate every 90 days at: https://www.npmjs.com/settings/shoplab/tokens
