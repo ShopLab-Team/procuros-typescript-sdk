@@ -88,9 +88,6 @@ jobs:
     environment: npm
 
     permissions:
-      # OIDC: lets GitHub Actions request a short-lived identity token that npm
-      # exchanges for a publish credential. No stored secret required.
-      id-token: write
       contents: read
 
     steps:
@@ -116,11 +113,10 @@ jobs:
         run: pnpm build
 
       - name: Publish
-        # --provenance  Attaches a signed SLSA attestation (requires id-token: write).
-        #               The Trusted Publisher config on npmjs.com verifies this
-        #               cryptographically, linking every release to this exact repo.
         # --access public  Required for scoped packages to be publicly installable.
-        run: npm publish --provenance --access public
+        # NOTE: --provenance is omitted because the source repository is private.
+        # npm provenance signing requires a public GitHub repository.
+        run: npm publish --access public
         env:
           # Granular Access Token scoped to @shoplab, automation 2FA mode.
           # Rotate every 90 days at: https://www.npmjs.com/settings/shoplab/tokens
