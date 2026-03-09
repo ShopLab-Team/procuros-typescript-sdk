@@ -186,7 +186,7 @@ export class HttpClient {
 
   private computeBackoff(attempt: number): number {
     const base = this.options.baseDelay * Math.pow(2, attempt - 1);
-    const jitter = base * (0.5 + Math.random() * 0.5);
+    const jitter = base * Math.random();
     return Math.min(jitter, this.options.maxDelay);
   }
 

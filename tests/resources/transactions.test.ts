@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
-import { ProcurosError } from '../../src/index.js';
+import { ProcurosError, ProcurosApiError } from '../../src/index.js';
 import { server, http, HttpResponse, BASE_URL, createTestClient, assertAuthHeader } from '../helpers.js';
 import { sampleOrder } from '../fixtures/order.js';
 import type { Transaction, PaginatedResponse } from '../../src/types/responses.js';
@@ -97,6 +97,29 @@ describe('AllTransactions', () => {
       }
 
       expect(results).toHaveLength(2);
+      expect(callCount).toBe(2);
+    });
+
+    it('throws when a subsequent page returns 500', async () => {
+      let callCount = 0;
+      server.use(
+        http.get(`${BASE_URL}/v2/all-transactions`, () => {
+          callCount++;
+          if (callCount === 1) {
+            return HttpResponse.json(makePage([sampleTransaction], true, 'page2'));
+          }
+          return HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        }),
+      );
+
+      const client = createTestClient();
+      const results: Transaction[] = [];
+      await expect(async () => {
+        for await (const tx of client.transactions.listAll()) {
+          results.push(tx);
+        }
+      }).rejects.toThrow(ProcurosApiError);
+      expect(results).toHaveLength(1);
       expect(callCount).toBe(2);
     });
   });

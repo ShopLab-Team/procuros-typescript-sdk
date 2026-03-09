@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
-import { ProcurosError } from '../../src/index.js';
+import { ProcurosError, ProcurosApiError } from '../../src/index.js';
 import { server, http, HttpResponse, BASE_URL, createTestClient, assertAuthHeader } from '../helpers.js';
 import { sampleOrder } from '../fixtures/order.js';
 import { sampleProductCatalog } from '../fixtures/product-catalog.js';
@@ -139,6 +139,29 @@ describe('IncomingTransactions', () => {
       expect(callCount).toBe(2);
     });
 
+    it('throws when a subsequent page returns 500', async () => {
+      let callCount = 0;
+      server.use(
+        http.get(`${BASE_URL}/v2/transactions`, () => {
+          callCount++;
+          if (callCount === 1) {
+            return HttpResponse.json(makePage([sampleReceived], true, 'page2'));
+          }
+          return HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+        }),
+      );
+
+      const client = createTestClient();
+      const results: ReceivedTransaction[] = [];
+      await expect(async () => {
+        for await (const tx of client.incoming.listAll()) {
+          results.push(tx);
+        }
+      }).rejects.toThrow(ProcurosApiError);
+      expect(results).toHaveLength(1);
+      expect(callCount).toBe(2);
+    });
+
     it('handles empty first page', async () => {
       server.use(
         http.get(`${BASE_URL}/v2/transactions`, () =>
@@ -231,6 +254,15 @@ describe('IncomingTransactions', () => {
     it('throws ProcurosError when items array is empty', async () => {
       const client = createTestClient();
       await expect(client.incoming.bulkMarkProcessed([])).rejects.toThrow(ProcurosError);
+    });
+
+    it('throws ProcurosError when items exceed 1000', async () => {
+      const client = createTestClient();
+      const items = Array.from({ length: 1001 }, (_, i) => ({
+        procurosTransactionId: `id-${i}`,
+        success: true,
+      }));
+      await expect(client.incoming.bulkMarkProcessed(items)).rejects.toThrow(ProcurosError);
     });
   });
 

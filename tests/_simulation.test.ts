@@ -2,7 +2,7 @@
  * Full SDK Simulation — Mock API (MSW) based on openapi-v2.yaml
  *
  * Exercises every public SDK method against locally mocked endpoints.
- * No real network calls. Temporary file — safe to delete after run.
+ * No real network calls.
  */
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { setupServer } from 'msw/node';

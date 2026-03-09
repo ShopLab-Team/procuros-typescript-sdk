@@ -163,12 +163,10 @@ describe('HttpClient', () => {
       );
 
       const client = createTestClient();
-      try {
-        await client.ping();
-      } catch (err) {
-        const json = JSON.stringify(err);
-        expect(json).not.toContain(TEST_TOKEN);
-      }
+      const err = await client.ping().catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(ProcurosApiError);
+      const json = JSON.stringify(err);
+      expect(json).not.toContain(TEST_TOKEN);
     });
   });
 
@@ -221,6 +219,23 @@ describe('HttpClient', () => {
       const client = createTestClient({ maxRetries: 2, baseDelay: 10, maxDelay: 50, retryOnPost: true });
       await client.outgoing.reportError({ errorReason: 'test', errorType: 'DATA' });
       expect(attempts).toBe(2);
+    });
+
+    it('retries PUT on 5xx', async () => {
+      let attempts = 0;
+      server.use(
+        http.put(`${BASE_URL}/v2/transactions/:id`, () => {
+          attempts++;
+          if (attempts < 3) {
+            return HttpResponse.json({ message: 'Error' }, { status: 500 });
+          }
+          return HttpResponse.json({ data: { message: 'OK.' } });
+        }),
+      );
+
+      const client = createTestClientWithRetry(2);
+      await client.incoming.markProcessed('949b2f25-fd9d-4c58-8899-b4dc277f8cf9', { success: true });
+      expect(attempts).toBe(3);
     });
 
     it('throws after retries exhausted', async () => {

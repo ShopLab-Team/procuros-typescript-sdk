@@ -1,6 +1,6 @@
 {
   "name": "@shoplab/procuros-sdk",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "TypeScript SDK for the Procuros API v2 — manage B2B trade transactions.",
   "type": "module",
   "main": "./dist/index.cjs",

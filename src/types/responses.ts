@@ -48,27 +48,58 @@ export interface PaginatedResponse<T> {
 }
 
 // ---------------------------------------------------------------------------
-// Received Transaction (GET /v2/transactions)
+// Received Transaction — discriminated union (GET /v2/transactions)
+//
+// Narrowing on `type` automatically narrows `content`:
+//   if (tx.type === 'ORDER') { tx.content.header.orderIdentifier; }
 // ---------------------------------------------------------------------------
 
-export interface ReceivedTransaction {
+type ReceivedTransactionOf<T extends TransactionType, C> = {
   procurosTransactionId: string;
-  type: TransactionType;
-  content: TransactionContent;
-}
+  type: T;
+  content: C;
+};
+
+export type ReceivedTransaction =
+  | ReceivedTransactionOf<'ORDER', Order>
+  | ReceivedTransactionOf<'ORDER_RESPONSE', OrderResponse>
+  | ReceivedTransactionOf<'INVOICE', Invoice>
+  | ReceivedTransactionOf<'SHIPPING_NOTICE', ShippingNotice>
+  | ReceivedTransactionOf<'CREDIT_NOTE', CreditNote>
+  | ReceivedTransactionOf<'DISPATCH_INSTRUCTION', DispatchInstruction>
+  | ReceivedTransactionOf<'DISPATCH_INSTRUCTION_RESPONSE', DispatchInstructionResponse>
+  | ReceivedTransactionOf<'RECEIVAL_NOTICE', ReceivalNotice>
+  | ReceivedTransactionOf<'REMITTANCE_ADVICE', RemittanceAdvice>
+  | ReceivedTransactionOf<'PRODUCT_CATALOG', ProductCatalog>
+  | ReceivedTransactionOf<'INVENTORY_REPORT', InventoryReport>
+  | ReceivedTransactionOf<'SALES_REPORT', SalesReport>;
 
 // ---------------------------------------------------------------------------
-// Full Transaction (GET /v2/all-transactions)
+// Full Transaction — discriminated union (GET /v2/all-transactions)
 // ---------------------------------------------------------------------------
 
-export interface Transaction {
+type TransactionOf<T extends TransactionType, C> = {
   procurosTransactionId: string;
-  type: TransactionType;
+  type: T;
   status: TransactionStatus;
   flow: TransactionFlow;
   createdAt: string;
-  content: TransactionContent;
-}
+  content: C;
+};
+
+export type Transaction =
+  | TransactionOf<'ORDER', Order>
+  | TransactionOf<'ORDER_RESPONSE', OrderResponse>
+  | TransactionOf<'INVOICE', Invoice>
+  | TransactionOf<'SHIPPING_NOTICE', ShippingNotice>
+  | TransactionOf<'CREDIT_NOTE', CreditNote>
+  | TransactionOf<'DISPATCH_INSTRUCTION', DispatchInstruction>
+  | TransactionOf<'DISPATCH_INSTRUCTION_RESPONSE', DispatchInstructionResponse>
+  | TransactionOf<'RECEIVAL_NOTICE', ReceivalNotice>
+  | TransactionOf<'REMITTANCE_ADVICE', RemittanceAdvice>
+  | TransactionOf<'PRODUCT_CATALOG', ProductCatalog>
+  | TransactionOf<'INVENTORY_REPORT', InventoryReport>
+  | TransactionOf<'SALES_REPORT', SalesReport>;
 
 // ---------------------------------------------------------------------------
 // Show Transaction Response (GET /v2/all-transactions/{id})
