@@ -25,6 +25,7 @@ Full reference for every class, method, type, and enum exported by `@shoplab/pro
   - [ProcurosError](#procuroserror)
   - [ProcurosApiError](#procurosapierror)
   - [ProcurosValidationError](#procurosvalidationerror)
+  - [ProcurosRateLimitError](#procurosratelimiterror)
   - [ProcurosNetworkError](#procurosnetworkerror)
   - [ProcurosTimeoutError](#procurostimeouterror)
 - [Types Reference](#types-reference)
@@ -137,6 +138,19 @@ Lists unprocessed incoming transactions with cursor-based pagination.
 | `count` | `number` | Number of items on the current page. |
 | `nextCursor` | `string \| null` | Cursor for the next page, or `null`. |
 | `nextPageUrl` | `string \| null` | Pre-built URL for the next page, or `null`. |
+
+#### Type Narrowing
+
+`ReceivedTransaction` is a **discriminated union** on the `type` field. Checking `type` automatically narrows `content` to the correct document type:
+
+```typescript
+for (const tx of page.items) {
+  if (tx.type === 'ORDER') {
+    // tx.content is narrowed to `Order` — no cast needed
+    console.log(tx.content.header.orderIdentifier);
+  }
+}
+```
 
 #### Example
 
@@ -437,11 +451,21 @@ Same envelope as `incoming.list()`, but items are `Transaction` objects (which i
 | Field | Type | Description |
 |---|---|---|
 | `procurosTransactionId` | `string` | Unique UUID on the Procuros network. |
-| `type` | `TransactionType` | Document type (e.g. `'ORDER'`). |
+| `type` | `TransactionType` | Document type (e.g. `'ORDER'`). Discriminant field — see below. |
 | `status` | `TransactionStatus` | `'PENDING'`, `'SUCCESS'`, `'FAILED'`, `'DROPPED'`, or `'UNKNOWN'`. |
 | `flow` | `TransactionFlow` | `'LIVE'` or `'TEST'`. |
 | `createdAt` | `string` | ISO 8601 datetime. |
-| `content` | `TransactionContent` | The document body (Order, Invoice, etc.). |
+| `content` | *(varies by `type`)* | The document body. Narrowed automatically when `type` is checked. |
+
+`Transaction` is a **discriminated union** — checking `type` narrows `content`:
+
+```typescript
+const tx = await client.transactions.get('949b2f25-...');
+if (tx.type === 'INVOICE') {
+  // tx.content is narrowed to `Invoice`
+  console.log(tx.content.header.invoiceIdentifier);
+}
+```
 
 #### Example
 
@@ -554,6 +578,7 @@ Extends `ProcurosApiError`. Thrown specifically for HTTP 422 responses that incl
 | Property | Type | Description |
 |---|---|---|
 | `fieldErrors` | `Record<string, string[]>` | Map of field paths to arrays of validation error messages. |
+| `errorUrl` | `string \| undefined` | URL to view the error on the Procuros Portal, if provided by the API. |
 
 Plus all properties from `ProcurosApiError`.
 
@@ -677,8 +702,8 @@ import type { Order, Invoice, TransactionType, ... } from '@shoplab/procuros-sdk
 | Type | Returned by | Description |
 |---|---|---|
 | `PaginatedResponse<T>` | `incoming.list()`, `transactions.list()` | Cursor-paginated envelope. |
-| `ReceivedTransaction` | `incoming.list()`, `incoming.listAll()` | Incoming transaction (id, type, content). |
-| `Transaction` | `transactions.list()`, `transactions.listAll()`, `transactions.get()` | Full transaction with status, flow, createdAt. |
+| `ReceivedTransaction` | `incoming.list()`, `incoming.listAll()` | Discriminated union — narrowing on `type` narrows `content`. |
+| `Transaction` | `transactions.list()`, `transactions.listAll()`, `transactions.get()` | Discriminated union — narrowing on `type` narrows `content`. Includes status, flow, createdAt. |
 | `MarkProcessedResponse` | `incoming.markProcessed()` | `{ data: { message, errorUrl? } }` |
 | `BulkMarkProcessedResponse` | `incoming.bulkMarkProcessed()` | `{ data: BulkMarkProcessedResponseItem[] }` |
 | `BulkMarkProcessedResponseItem` | -- | `{ procurosTransactionId, message, errorUrl? }` |

@@ -38,7 +38,8 @@ console.log(page.items);
 
 // Auto-paginate through all transactions
 for await (const tx of client.incoming.listAll({ type: 'ORDER' })) {
-  console.log(tx.procurosTransactionId, tx.type);
+  // TypeScript narrows tx.content to `Order` after the type check
+  console.log(tx.procurosTransactionId, tx.content);
 }
 ```
 
@@ -143,6 +144,32 @@ const tx = await client.transactions.get('949b2f25-fd9d-4c58-8899-b4dc277f8cf9')
 
 ```typescript
 await client.ping(); // throws on failure
+```
+
+## Type Narrowing
+
+Both `ReceivedTransaction` and `Transaction` are **discriminated unions** on the `type` field. Checking `type` automatically narrows `content` to the correct document type — no casts needed:
+
+```typescript
+for await (const tx of client.incoming.listAll()) {
+  switch (tx.type) {
+    case 'ORDER':
+      // tx.content is narrowed to `Order`
+      console.log(tx.content.header.orderIdentifier);
+      break;
+    case 'INVOICE':
+      // tx.content is narrowed to `Invoice`
+      console.log(tx.content.header.invoiceIdentifier);
+      break;
+  }
+}
+```
+
+The outgoing `SentTransaction` type uses the same pattern, so TypeScript prevents mismatched `type` and `content`:
+
+```typescript
+// Type error: content must be `Invoice` when type is 'INVOICE'
+client.outgoing.send({ type: 'INVOICE', content: orderPayload });
 ```
 
 ## Error Handling
